@@ -13,8 +13,8 @@ def test_routing():
         camps_path=os.path.join(base, "camps.json")
     )
     
-    # User coordinates in Shichigahama
-    user_lat, user_lng = 38.30179, 141.06377
+    # User coordinates in Natori (New Southern Expansion)
+    user_lat, user_lng = 38.1724, 140.8914
     
     # Earthquake at 85% severity
     calamity = "earthquake"

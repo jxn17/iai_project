@@ -19,11 +19,15 @@ except ImportError:
     print("ERROR: osmnx not installed. Run: pip install osmnx")
     sys.exit(1)
 
-# Sendai, Shichigahama, and Tagajo — wider coverage for coastal routing
+# Greater Sendai Area — wide coverage for regional evacuation
 PLACE = [
     "Sendai, Miyagi, Japan",
     "Shichigahama, Miyagi, Japan",
-    "Tagajo, Miyagi, Japan"
+    "Tagajo, Miyagi, Japan",
+    "Natori, Miyagi, Japan",
+    "Iwanuma, Miyagi, Japan",
+    "Rifu, Miyagi, Japan",
+    "Shiogama, Miyagi, Japan"
 ]
 NETWORK_TYPE = "walk"  # pedestrian network for evacuation
 
