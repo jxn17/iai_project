@@ -26,8 +26,6 @@ def compute_edge_weight(edge: dict, calamity: str, severity: float) -> float:
     """
     Returns the effective traversal cost for an edge given current disaster.
     severity ∈ [0.0, 1.0] — output of the ML severity scaler.
-
-    Returns float("inf") for completely blocked edges.
     """
     base = float(edge.get("length", 100))
     highway = edge.get("highway", "")
@@ -36,16 +34,23 @@ def compute_edge_weight(edge: dict, calamity: str, severity: float) -> float:
     is_bridge = bool(edge.get("is_bridge", False))
 
     if calamity == "tsunami":
+        # Tsunami blocks bridges entirely due to wave impact / structural risk
         if is_bridge:
             return float("inf")
         return base
 
     elif calamity == "earthquake":
         if is_bridge:
-            if severity > 0.5:
+            # Soften the block: only absolute block at extreme severity
+            if severity > 0.95:
                 return float("inf")
-            return base * (1 + severity * 4)
-        slow_factor = 1 + severity * 0.5
+            # Otherwise, apply a heavy penalty (fear of collapse/slow inspection)
+            # Penalty scales from 5x to 50x
+            penalty_factor = 5 + (severity * 45)
+            return base * penalty_factor
+        
+        # Roads are just slower due to debris
+        slow_factor = 1 + (severity * 1.5)
         return base * slow_factor
 
     elif calamity == "typhoon":
@@ -69,7 +74,6 @@ def build_adjacency(
 ) -> Dict[int, List[Tuple[int, float]]]:
     """
     Pre-computes weighted adjacency list.
-    excluded_nodes: set of node IDs to skip (e.g. low-elevation nodes in tsunami).
     """
     excluded = excluded_nodes or set()
     adj: Dict[int, List[Tuple[int, float]]] = {}
@@ -96,49 +100,63 @@ def astar(
     goals: List[int]
 ) -> dict:
     """
-    Returns the shortest path from start to the nearest goal node.
-    Uses haversine distance as the admissible heuristic.
+    Single-source, Multi-goal A* search.
+    Finds the shortest path to the NEAREST reachable goal.
     """
     t0 = time.perf_counter()
     nodes_expanded = 0
-    best = None
+    
+    if start not in nodes_dict:
+        return {"path": [], "cost": float("inf"), "nodes_expanded": 0, "time_ms": 0, "algorithm": "astar"}
 
-    for goal in goals:
-        g_lat = nodes_dict[goal]["lat"]
-        g_lng = nodes_dict[goal]["lng"]
+    goal_set = set(goals)
+    
+    def get_h(nid: int) -> float:
+        n = nodes_dict[nid]
+        min_d = float("inf")
+        for gid in goals:
+            gn = nodes_dict[gid]
+            d = haversine_m(n["lat"], n["lng"], gn["lat"], gn["lng"])
+            if d < min_d:
+                min_d = d
+        return min_d
 
-        def h(nid: int) -> float:
-            n = nodes_dict[nid]
-            return haversine_m(n["lat"], n["lng"], g_lat, g_lng)
+    open_heap = [(get_h(start), 0.0, start, [start])]
+    g_score: Dict[int, float] = {start: 0.0}
+    visited = set()
 
-        open_heap = [(h(start), 0.0, start, [start])]
-        g_score: Dict[int, float] = {start: 0.0}
+    while open_heap:
+        f, g, cur, path = heapq.heappop(open_heap)
+        
+        if cur in visited: continue
+        visited.add(cur)
+        nodes_expanded += 1
 
-        while open_heap:
-            f, g, cur, path = heapq.heappop(open_heap)
-            nodes_expanded += 1
+        if cur in goal_set:
+            elapsed_ms = (time.perf_counter() - t0) * 1000
+            return {
+                "path": path, 
+                "cost": g, 
+                "goal": cur,
+                "nodes_expanded": nodes_expanded, 
+                "time_ms": round(elapsed_ms, 2),
+                "algorithm": "astar"
+            }
 
-            if cur == goal:
-                if best is None or g < best["cost"]:
-                    best = {"path": path, "cost": g, "goal": goal}
-                break
+        if g > g_score.get(cur, float("inf")):
+            continue
 
-            if g > g_score.get(cur, float("inf")):
-                continue
-
-            for nb, w in adj.get(cur, []):
-                tg = g + w
-                if tg < g_score.get(nb, float("inf")):
-                    g_score[nb] = tg
-                    heapq.heappush(open_heap, (tg + h(nb), tg, nb, path + [nb]))
+        for nb, w in adj.get(cur, []):
+            tg = g + w
+            if tg < g_score.get(nb, float("inf")):
+                g_score[nb] = tg
+                heapq.heappush(open_heap, (tg + get_h(nb), tg, nb, path + [nb]))
 
     elapsed_ms = (time.perf_counter() - t0) * 1000
-    if best is None:
-        return {"path": [], "cost": float("inf"),
-                "nodes_expanded": nodes_expanded, "time_ms": round(elapsed_ms, 2),
-                "algorithm": "astar"}
     return {
-        "path": best["path"], "cost": best["cost"], "goal": best["goal"],
-        "nodes_expanded": nodes_expanded, "time_ms": round(elapsed_ms, 2),
+        "path": [], 
+        "cost": float("inf"),
+        "nodes_expanded": nodes_expanded, 
+        "time_ms": round(elapsed_ms, 2),
         "algorithm": "astar"
-    }
+    }

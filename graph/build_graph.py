@@ -19,8 +19,12 @@ except ImportError:
     print("ERROR: osmnx not installed. Run: pip install osmnx")
     sys.exit(1)
 
-# Sendai, Miyagi, Japan — bounding box for coastal + city area
-PLACE = "Sendai, Miyagi, Japan"
+# Sendai, Shichigahama, and Tagajo — wider coverage for coastal routing
+PLACE = [
+    "Sendai, Miyagi, Japan",
+    "Shichigahama, Miyagi, Japan",
+    "Tagajo, Miyagi, Japan"
+]
 NETWORK_TYPE = "walk"  # pedestrian network for evacuation
 
 OUTPUT_GRAPH = os.path.join(os.path.dirname(__file__), "sendai_graph.json")

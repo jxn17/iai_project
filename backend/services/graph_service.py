@@ -61,6 +61,24 @@ class GraphService:
         print(f"[GraphService] {len(self.camps)} camps loaded")
 
     # ── Utilities ─────────────────────────────────────────────────────────────
+    
+    def romanize_name(self, name: str) -> str:
+        """Helper to convert common Japanese road terms to English."""
+        if not name: return ""
+        subs = {
+            "橋": " Bridge",
+            "国道": "Route ",
+            "通": " St",
+            "線": " Line",
+            "大橋": " Great Bridge",
+            "北": "North ",
+            "南": "South ",
+            "東": "East ",
+            "西": "West ",
+        }
+        for jp, en in subs.items():
+            name = name.replace(jp, en)
+        return name.strip().replace("  ", " ")
 
     def nearest_node(self, lat: float, lng: float) -> int:
         best_id, best_dist = None, float("inf")
@@ -105,9 +123,10 @@ class GraphService:
                 continue
             is_bridge = bool(edge.get("is_bridge", False))
             if calamity == "tsunami" and is_bridge:
-                blocked.add(str(name))
+                blocked.add(self.romanize_name(str(name)))
             elif calamity == "earthquake" and is_bridge and severity > 0.5:
-                blocked.add(str(name))
+                # Use the same Romanization for earthquake bridge blocks
+                blocked.add(self.romanize_name(str(name)))
         return list(blocked)[:10]
 
     def get_camp_for_goal(
