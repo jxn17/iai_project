@@ -27,7 +27,9 @@ PLACE = [
     "Natori, Miyagi, Japan",
     "Iwanuma, Miyagi, Japan",
     "Rifu, Miyagi, Japan",
-    "Shiogama, Miyagi, Japan"
+    "Shiogama, Miyagi, Japan",
+    "Watari, Miyagi, Japan",
+    "Yamamoto, Miyagi, Japan"
 ]
 NETWORK_TYPE = "walk"  # pedestrian network for evacuation
 
